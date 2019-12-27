@@ -1,0 +1,6 @@
+
+kubectl get po -n openstack -o wide |grep neutron
+
+kubectl -n openstack exec -it neutron-ovs-agent-czx5r bash
+
+

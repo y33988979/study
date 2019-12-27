@@ -1,0 +1,98 @@
+#!/usr/bin/env stap
+
+function process_tree() {
+    cur_proc = task_current();
+    parent_pid = task_pid(task_parent (cur_proc));
+    while (parent_pid != 0) {
+        printf("%s: %s (%d), %d, %d -> ", ctime(), task_execname(cur_proc), task_pid(cur_proc), task_pid(cur_proc), task_gid(cur_proc));
+        cur_proc = task_parent(cur_proc);
+        parent_pid = task_pid(task_parent(cur_proc));
+    }
+    if (task_pid(cur_proc) == 1) {
+        printf("%s: %s (%d), %d, %d\n", ctime(), task_execname(cur_proc), task_pid(cur_proc), task_pid(cur_proc), task_gid(cur_proc));
+    }
+}
+
+probe kernel.statement("*@fs/namei.c:4048") {
+    filename = kernel_string($name->name);
+    dirname = kernel_string($path->dentry->d_name->name);
+    if (dirname =~ "machine-qemu" || filename =~ "machine-qemu") {
+        printf ("%s: do_unlinkat-> pid: (%d)| ppid: (%d) |dirname: %s|filename: %s\n", ctime(), pid(), ppid(), dirname, filename);
+        process_tree();
+    }
+}
+
+probe kernel.statement("*@fs/namei.c:3930") {
+    dirname = kernel_string($path->dentry->d_name->name);
+    pathname = user_string($pathname);
+    if (dirname =~ "machine-qemu" || pathname =~ "machine-qemu") {
+        printf ("%s: do_rmdir-> pid: (%d)| ppid: (%d) |dirname: %s|pathname: %s\n", ctime(), pid(), ppid(), dirname, pathname);
+        process_tree();
+    }
+}
+
+probe kernel.function("cgroup_attach_task"){
+    comm = kernel_string($leader->comm)
+    if (comm =~ "qemu-kvm") {
+        printf("cgroup attach: pid = %d, dis-cgroup = %s\n", $leader->pid, kernel_string($dst_cgrp->kn->name));
+        process_tree()
+    }
+}
+
+probe process("/usr/lib/systemd/systemd-logind").function("session_start_scope"){
+        if ($s->leader == 2638 || $s->leader == 3784 || $s->leader == 3773) {
+                printf("pid %d move to Session %s\n", $s->leader, user_string($s->id));
+                process_tree();
+        }
+}
+
+probe process("/usr/bin/sudo").begin {
+
+        printf ("%s(%d) open\n", execname(), pid())
+
+        printf ("cmd args: %s\n", cmdline_str())
+
+        process_tree()
+
+}
+
+function trace(entry_p, extra) {
+
+  %( $# > 1 %? if (tid() in trace) %)
+
+  printf("%s%s%s %s\n",
+
+         thread_indent (entry_p),
+
+         (entry_p>0?"->":"<-"),
+
+         ppfunc (),
+
+         extra)
+
+}
+
+
+
+%( $# > 1 %?
+
+global trace
+
+probe $2.call {
+
+  trace[tid()] = 1
+
+}
+
+probe $2.return {
+
+  delete trace[tid()]
+
+}
+
+%)
+
+
+probe process("/lib64/security/pam_systemd.so").function("*").call   { trace(1, $$parms) }
+probe process("/lib64/security/pam_systemd.so").function("*").return { trace(-1, $$return) }
+

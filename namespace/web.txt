@@ -1,0 +1,7 @@
+
+https://www.ibm.com/developerworks/cn/linux/l-cn-chroot/index.html
+
+http://blog.lucode.net/linux/intro-Linux-namespace-1.html
+
+https://lwn.net/Articles/531114/
+
