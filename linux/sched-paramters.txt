@@ -1,0 +1,94 @@
+Issue
+What are following kernel parameters used for?
+kernel.sched_child_runs_first
+kernel.sched_min_granularity_ns
+kernel.sched_latency_ns
+kernel.sched_wakeup_granularity_ns
+kernel.sched_shares_ratelimit
+kernel.sched_tunable_scaling
+kernel.sched_shares_thresh
+kernel.sched_features
+kernel.sched_migration_cost
+kernel.sched_nr_migrate
+kernel.sched_time_avg
+Resolution
+kernel.sched_child_runs_first
+This parameter controls whether process scheduled next after fork is
+the parent or child. If set to 0, the parent is scheduled next.
+
+kernel.sched_latency_ns
+sched_latency_ns is the initial value for the scheduler
+period. The scheduler period is a period of time during which all
+runnable tasks should be allowed to run at least once. While CFS has
+no concept of time slices, you can think of the period as the
+initial chunk of time which is then divided evenly into timeslices,
+one for each runnable process. Note that this tunable only specifies
+the initial value. When too many tasks become runnable the scheduler
+will use kernel.sched_min_granularity_ns instead .
+/usr/share/doc/kernel-doc-2.6.32/Documentation/scheduler/sched-design-CFS.txt
+
+kernel.sched_min_granularity_ns
+sched_min_granularity_ns specifies the target minimum scheduler period in which a single task will run. This tunable is used only when running load is high. Unlike sched_latency_ns, this tunable specifies the target period allocated for each task to run rather than the time in which all tasks should be run once.
+
+kernel.sched_wakeup_granularity_ns
+It gives preemption granularity when tasks wake up.
+
+kernel.sched_shares_ratelimit
+This parameter is used for updating the group shares.
+However, it was obsolete in RHEL6.2 due to a patch from
+upstream. For the detail please see the following.
+http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=2069dd75c7d0f49355939e5586daf5a9ab216db7
+
+kernel.sched_tunable_scaling
+sched_tunable_scaling controls whether the scheduler can adjust
+sched_latency_ns. The values are 0 = do not adjust, 1 = logarithmic
+adjustment, and 2 = linear adjustment.
+The adjustment made is based on the number of CPUs, and increases
+logarithmically or linearly as implied in the available values. This
+is due to the fact that with more CPUs there's an apparent reduction
+in perceived latency.
+
+kernel.sched_migration_cost
+Amount of time after the last execution that a task is considered to
+be “cache hot” in migration decisions. A “hot” task is less
+likely to be migrated, so increasing this variable reduces task
+migrations. The default value is 500000 (ns).
+If the CPU idle time is higher than expected when there are runnable
+processes, try reducing this value. If tasks bounce between CPUs or
+nodes too often, try increasing it.
+
+kernel.sched_nr_migrate
+If a SCHED_OTHER task spawns a large number of other tasks, they
+will all run on the same CPU. The migration task or softirq will try
+to balance these tasks so they can run on idle CPUs. The
+sched_nr_migrate option can be set to specify the number of tasks
+that will move at a time.
+
+kernel.sched_shares_thresh
+It works to inject some fuzzyness into changing the per-cpu group
+shares. This avoids remote rq-locks at the expense of fairness.
+However, it was obsolete in RHEL6.2 as well as
+sched_shares_ratelimit. Please refer to the above upstream
+information.
+
+kernel.sched_features
+This parameter allows you to enable or disable scheduler features for debugging purposes.
+
+NO_GENTLE_FAIR_SLEEPERS = 1
+NO_START_DEBIT = 2
+NO_WAKEUP_PREEMPT = 4
+NO_AFFINE_WAKEUPS = 8
+NEXT_BUDDY = 16
+NO_LAST_BUDDY = 32
+NO_CACHE_HOT_BUDDY = 64
+ARCH_POWER = 128
+HRTICK = 256
+DOUBLE_TICK = 512
+NO_LB_BIAS = 1024
+NO_OWNER_SPIN = 2048
+
+kernel.sched_time_avg
+sched_time_avg is a period of time over which the average real-time
+task CPU consumption is averaged. The resulting average is used to
+adjust CPU power for non-real-time tasks to ensure that real-time
+tasks don't have to fight for CPU time.

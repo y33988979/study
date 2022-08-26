@@ -1,0 +1,21 @@
+
+
+分配内存: (首次分配slab，慢速)
+kmem_cache_alloc(struct kmem_cache *s, gfp_t gfpflags)
+  slab_alloc(kmem_cache, gfpflags, addr)
+    slab_alloc_node(s, gfpflags, NUMA_NO_NODE, addr)
+      __slab_alloc(s, gfpflags, node, addr, c)
+        ___slab_alloc(s, gfpflags, node, addr, c)
+          new_slab_objects(s, gfpflags, node, &c)
+            new_slab(s, flags, node)
+              allocate_slab(s,flags & (GFP_RECLAIM_MASK | GFP_CONSTRAINT_MASK), node);
+                alloc_slab_page(s, alloc_gfp, node, oo);
+                  alloc_pages(flags, order);
+                    alloc_pages_current(gfp_mask, order);
+                      __alloc_pages_nodemask(gfp, order,policy_node(gfp, pol, numa_node_id()),policy_nodemask(gfp, pol))
+                        get_page_from_freelist(alloc_mask, order, alloc_flags, &ac);
+                          ...
+
+
+
+
