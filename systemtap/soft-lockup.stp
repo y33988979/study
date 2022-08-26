@@ -1,0 +1,57 @@
+#!/usr/bin/stap -gv
+
+%{
+/* guru */
+//#undef STP_OVERLOAD
+//#include <linux/delay.h>
+//#include <linux/time.h>
+%}
+
+%{
+   #include <linux/sched.h>
+   #include <linux/list.h>
+   #include <linux/smp.h>
+%}
+
+probe begin {
+	printf("begin!\n")
+}
+
+private function delay_ns(num:long) %{
+	int nn = 1;
+	int i, j, k, num;
+	for (i = 0; i < num; i++) {
+		for (j = 0; j < 1000000; j++) {
+			for (k = 0; k < 1000000; k++) {
+				nn *= 12345;
+			}
+		}
+	}
+%}
+
+private function delay_ms(num:long) {
+	int i;
+	for (i = 0; i < num; i++) {
+		delay_ns(100000000);
+	}
+	//printk("delay_ms %d\n", num);
+}
+
+/* probe kernel.function("cpu_stopper_thread").call {*/
+probe kernel.statement("cpu_stopper_thread@kernel/stop_machine.c:491") {
+	cpu = cpu()
+	curr_task = task_current()
+	printf("cpu%d cpu_stopper_thread in!\n", cpu)
+
+	if (cpu != 1) {
+		printf("skip delay!\n")
+	}
+	else {
+		printf("cpu%d: trigger lockup in!\n", cpu)
+		mdelay(2000000)
+		//delay_ms(1000);
+		printf("cpu%d: trigger lockup out!\n", cpu)
+		exit()
+	}
+}
+

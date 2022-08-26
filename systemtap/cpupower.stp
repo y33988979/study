@@ -1,0 +1,12 @@
+#!/usr/bin/env stap
+
+#probe kernel.statement("*@driver/cpufreq/intel_pstate.c:1547") {
+#	printf("[yuchen]: pstate=%d\n", pstate);
+#}
+
+probe kernel.function("intel_pstate_set_pstate") {
+#	printf("[yuchen]: pstate=%d\n", pstate);
+	printf ("%s -> %s\n", thread_indent(1), probefunc())
+  printf ("\t %s args [%s]\n", probefunc(), $$parms)
+  printf ("\t %s locals [%s]\n", probefunc(), $$locals)
+}
