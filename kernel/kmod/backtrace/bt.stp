@@ -1,0 +1,10 @@
+#!/usr/bin/stap 
+
+#kernel.function("unwind_frame@arch/arm64/kernel/stacktrace.c:43") $tsk:struct task_struct* $frame:struct stackframe*
+probe kernel.function("unwind_frame@arch/arm64/kernel/stacktrace.c:43") {
+	if (execname() == "insmod") {
+		printf("unwind: frame.pc=0x%lx, frame.fp=0x%lx \n", $frame->pc, $frame->fp);
+		//print_backtrace();
+	}
+}
+

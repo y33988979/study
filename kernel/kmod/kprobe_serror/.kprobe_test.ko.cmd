@@ -1,0 +1,1 @@
+cmd_/root/yc/kmod/kprobe2/kprobe_test.ko := ld -r  -EL -maarch64linux  -T ./scripts/module-common.lds -T ./arch/arm64/kernel/module.lds  --build-id  -o /root/yc/kmod/kprobe2/kprobe_test.ko /root/yc/kmod/kprobe2/kprobe_test.o /root/yc/kmod/kprobe2/kprobe_test.mod.o ;  true

@@ -1,0 +1,1 @@
+cmd_/root/yc/kmod/serror/serror.ko := ld -r  -EL -maarch64linux  -T ./scripts/module-common.lds -T ./arch/arm64/kernel/module.lds  --build-id  -o /root/yc/kmod/serror/serror.ko /root/yc/kmod/serror/serror.o /root/yc/kmod/serror/serror.mod.o ;  true
