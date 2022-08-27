@@ -84,7 +84,7 @@ static __init int backtrace_init(void)
 	int n = 0;
 	int id = smp_processor_id();
 
-        printk("Module inits.\n");
+        printk("backtrace Module inits.\n");
 	n = func1(id, id);
         printk("n = %d.\n", n);
 
@@ -93,7 +93,7 @@ static __init int backtrace_init(void)
 
 static __exit void backtrace_exit(void)
 {
-        printk("Module exits.\n");
+        printk("backtrace Module exits.\n");
 }
 
 module_init(backtrace_init);
