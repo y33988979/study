@@ -17,7 +17,7 @@ static __init int hirq_off_init(void)
         {
                 if (jiffies_to_msecs(jiffies - lastJif) > EXPIRE_TIMEDOUT)
                 {
-                        printk("Expire time out: %d s", EXPIRE_TIMEDOUT);
+                        printk("Expire time out: %d s\n", EXPIRE_TIMEDOUT);
                         return 0;
                 }
         }
