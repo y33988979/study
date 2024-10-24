@@ -1,0 +1,8 @@
+#!/usr/bin/env stap
+
+probe module("dm_mod").function("dev_suspend") {
+	printf("current: %s:%d call dev_suspend\n", execname(), pid()); 
+	print_ubacktrace();
+	printf("--------------------\n");
+	print_backtrace();
+}

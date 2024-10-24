@@ -1,0 +1,132 @@
+#!/usr/bin/env stap
+
+global total_rss=0
+global total_rss_real=0
+
+global total_cache=0
+global total_cache_real=0
+
+global group_memcg_str="test" 
+probe kernel.statement("accumulate_memcg_tree@mm/memcontrol.c") {
+	if (kernel_string($memcg->css->cgroup->kn->name) == group_memcg_str) {
+		total_rss = 0;
+		total_rss_real = 0
+		total_cache = 0
+		total_cache_real = 0
+		printf("group_memcg_str cgroup tree:\n");
+	}
+}
+
+%{
+#include <linux/cpumask.h>
+#include <linux/memcontrol.h>
+%} 
+
+function acc_per_cpu_stat:long(mi:long, idx:long) %{
+	int cpu;
+
+	struct mem_cgroup *memcg = (struct mem_cgroup *)STAP_ARG_mi;
+	struct mem_cgroup_stat_cpu *stat_cpu;
+	int idx = STAP_ARG_idx;
+	long x = 0;
+	
+	for_each_online_cpu(cpu)
+	{
+		stat_cpu = per_cpu_ptr(memcg->stat_cpu, cpu);
+		x += stat_cpu->count[idx];
+		//STAP_PRINTF(stat_cpu[%d] = %ld\n", cpu, stat_cpu->count[idx]);
+	}
+	STAP_RETVALUE = x + memcg->stat[idx].counter;
+%}
+
+
+#probe kernel.statement("accumulate_memcg_tree") {
+#        if (kernel_string($memcg->css->cgroup->kn->name) == "") {
+#                rss = acc_per_cpu_stat($memcg, 30);
+#                printf("$memcg->name: %s, real_stat[rss]: %ld\n", kernel_string($memcg->css->cgroup->kn->name), rss * 65536);
+#                printf("$memcg->name: %s,      stat[rss]: %ld\n", kernel_string($memcg->css->cgroup->kn->name), $memcg->stat[30]->counter*65536);
+#        }
+#}
+
+
+# kernel.statement("accumulate_memcg_tree@mm/memcontrol.c:3004") $memcg:struct mem_cgroup* $acc:struct accumulated_stats* $mi:struct mem_cgroup*
+function print_one_lru_list(list:long, lru_id:long, nid:long, memcg_arg:long)
+{
+	# only stap for pagecache
+	if (lru_id != 2 && lru_id != 3) {
+		return;
+	}
+
+	list_head = list;
+	list_cur= @cast(list, "struct list_head")->prev;
+	while (list_cur != list_head) {
+		page=list_cur-0x8;
+		mapping=@cast(page, "struct page")->mapping;
+		if (mapping) {
+			ino = @cast(mapping, "struct address_space")->host->i_ino;
+			printf("%lx: nid(%d) lru_id(%d) ino(%d)\n", memcg_arg, nid, lru_id, ino);
+			list_cur = @cast(list_cur, "struct list_head")->prev;
+		}
+	}
+}
+
+function print_one_nodeinfo(nodeinfo:long, nid:long, memcg_arg:long)
+{
+	for (i = 0; i < 5; i++) {
+		list = &@cast(nodeinfo, "struct mem_cgroup_per_node")->lruvec->lists[i];
+		list_prev = @cast(list, "struct list_head")->prev;
+		if (list_prev != list) {
+			print_one_lru_list(list, i, nid, memcg_arg);
+		}
+	}
+}
+
+function print_memcg_pagecache_file_name(memcg_arg:long)
+{
+	for (i = 0; i < 16; i++) {
+		nodeinfo = @cast(memcg_arg, "struct mem_cgroup")->nodeinfo[i];
+		if (nodeinfo) {
+			print_one_nodeinfo(nodeinfo, i, memcg_arg);
+		} else {
+			break;
+		}
+	}
+}
+
+probe kernel.statement("accumulate_memcg_tree@mm/memcontrol.c:3004") {
+        if (kernel_string($memcg->css->cgroup->kn->name) == group_memcg_str) {
+                rss = (($mi->stat[30]->counter)*65536);
+		rss_real = acc_per_cpu_stat($mi, 30) * 65536;
+
+		cache = (($mi->stat[29]->counter)*65536);
+		cache_real = acc_per_cpu_stat($mi, 29) * 65536;
+
+                total_rss += rss;
+		total_rss_real += rss_real;
+		total_cache += cache;
+		total_cache_real += cache_real;
+
+		ref_count = $mi->css->refcnt->count->counter;
+
+		//if (kernel_string($mi->css->cgroup->kn->name) == "session-509053") {
+		//if (kernel_string($mi->css->cgroup->kn->name) == "session-994048") {
+			print_memcg_pagecache_file_name($mi);
+                	printf("%lx:%-16s ref:%-22d", $mi, kernel_string($mi->css->cgroup->kn->name), ref_count);
+			printf("real[rss]: %-10ld [rss]: %-10ld [cache]: %-10ld real[cache]: %-10ld\n", rss_real, rss, cache, cache_real);
+		//}
+        }
+}
+
+#kernel.statement("accumulate_memcg_tree@mm/memcontrol.c:3016") $memcg:struct mem_cgroup* $acc:struct accumulated_stats* $mi:struct mem_cgroup*
+probe kernel.statement("accumulate_memcg_tree@mm/memcontrol.c:3016") {
+        if (kernel_string($memcg->css->cgroup->kn->name) == group_memcg_str) {
+		printf("\nSTAT============================================\n");
+		printf("STAT================================================\n");
+		printf("total_rss: %-16ld ", total_rss);
+		printf("real_total_rss: %-16ld ", total_rss_real);
+		printf("total_cache: %ld ", total_cache);
+		printf("real_total_cache: %-16ld\n", total_cache_real);
+		printf("STAT================================================\n");
+		printf("STAT================================================\n");
+	}
+}

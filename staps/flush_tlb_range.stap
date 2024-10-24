@@ -1,0 +1,70 @@
+%{
+#include <asm/tlbflush.h>
+%}
+
+function my_flush_tlb_range(vma:long, start:long, end:long) %{
+        struct vm_area_struct *vma = (struct vm_area_struct *)STAP_ARG_vma;
+        unsigned long start = STAP_ARG_start;
+        unsigned long end = STAP_ARG_end;
+        //_stp_printf("vma(%llx) start (%lx) end(%lx) \n", vma, start, end);
+        //flush_tlb_range(vma, start, end);
+
+        struct mm_struct *mm = vma->vm_mm;
+        int num = 0;
+        int scale = 0;
+        unsigned long asid = ASID(mm);
+        unsigned long addr;
+        unsigned long pages;
+        enum tlb_flush_types flush;
+
+        unsigned long stride = PAGE_SIZE;
+        bool last_level = false;
+
+        start = round_down(start, stride);
+        end = round_up(end, stride);
+        pages = (end - start) >> PAGE_SHIFT;
+
+        //from __flush_tlb_range
+        dsb(ishst);
+        while (pages > 0) {
+                if (!system_supports_tlb_range() ||
+                    pages % 2 == 1) {
+                        addr = __TLBI_VADDR(start, asid);
+                        if (last_level) {
+                                __tlbi(vale1is, addr);
+                                __tlbi_user(vale1is, addr);
+                        } else {
+                                __tlbi(vae1is, addr);
+                                __tlbi_user(vae1is, addr);
+                        }
+                        start += stride;
+                        pages -= stride >> PAGE_SHIFT;
+                } else {
+                        num = __TLBI_RANGE_NUM(pages, scale);
+                        if (num >= 0) {
+                                addr = __TLBI_VADDR_RANGE(start, asid, scale,
+                                                          num, 0);
+                                if (last_level) {
+                                         __tlbi(rvale1is, addr);
+                                         __tlbi_user(rvale1is, addr);
+                                } else {
+                                        __tlbi(rvae1is, addr);
+                                        __tlbi_user(rvae1is, addr);
+                                }
+                                start += __TLBI_RANGE_PAGES(num, scale) << PAGE_SHIFT;
+                                pages -= __TLBI_RANGE_PAGES(num, scale);
+                        }
+                        scale++;
+                }
+        }
+        dsb(ish);
+
+
+%}
+//kernel.function("unmap_single_vma@mm/memory.c:1412").return $tlb:struct mmu_gather* $vma:struct vm_area_struct* $start_addr:long unsigned int $end_addr:long unsigned int $details:struct zap_details*
+probe kernel.function("unmap_single_vma").return
+{
+        if (execname() == "main") {
+                my_flush_tlb_range($vma, $start_addr, $end_addr);
+        }
+}

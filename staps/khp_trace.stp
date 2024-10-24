@@ -1,0 +1,51 @@
+#!/usr/bin/stap
+
+global diff
+
+probe kernel.function("collapse_huge_page@mm/khugepaged.c:933")
+{
+	diff[0] = gettimeofday_ms();
+	printf("%d: collapse_huge_page in\n", diff[0]);
+}
+
+probe kernel.function("collapse_huge_page@mm/khugepaged.c:933").return
+{
+	diff[1] = gettimeofday_ms();
+	printf("%d: collapse_huge_page out\n", diff[1]);
+	if (diff[1] - diff[0] >= 2000) {
+		printf("collapse_huge_page took too long: %dms\n", diff[1]-diff[0]);
+	}
+}
+
+//probe kernel.function("__cpu_copy_user_page@arch/arm64/mm/copypage.c:25")
+probe kernel.statement("collapse_huge_page@mm/khugepaged.c:953")
+{
+	if (execname() == "khugepaged")
+		diff[2] = gettimeofday_ms();
+	else
+		diff[2] = 0;
+}
+
+//probe kernel.function("__cpu_copy_user_page@arch/arm64/mm/copypage.c:25").return
+//probe kernel.function("__collapse_huge_page_copy@mm/khugepaged.c:615")
+probe kernel.statement("collapse_huge_page@mm/khugepaged.c:1057")
+{
+	if (execname() == "khugepaged") {
+		diff[3] = gettimeofday_ms();
+		if (diff[2] != 0 && diff[3] - diff[2] >= 2000) {
+			printf("before __collapse_huge_page_copy took too long: %dms\n", diff[3]-diff[2]);
+		}
+		diff[2] = 0;
+	}
+}
+probe kernel.statement("collapse_huge_page@mm/khugepaged.c:1062")
+{
+	if (execname() == "khugepaged") {
+		diff[4] = gettimeofday_ms();
+		if (diff[3] != 0 && diff[4] - diff[3] >= 2000) {
+			printf("__collapse_huge_page_copy2 took too long: %dms\n", diff[4]-diff[3]);
+		}
+		diff[3] = 0;
+	}
+}
+

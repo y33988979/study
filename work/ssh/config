@@ -1,0 +1,79 @@
+Host *
+        ForwardAgent yes
+
+Host jumpserver
+HostName 218.94.118.90
+User jumpserver
+Port 33333
+
+Host *.se.easystack.cn
+ProxyCommand ssh -W %h:%p jumpserver
+
+Host mirror
+User yuchen
+HostName mirror.easystack.cn
+IdentityFile ~/.ssh/id_rsa
+
+Host 129-mirror
+User yuchen
+HostName se129.se.easystack.cn
+ProxyCommand ssh -W %h:%p mirror
+
+## 192.168.3.111
+Host 199-jump
+User yuchen
+HostName 192.168.1.199
+ProxyCommand ssh -W %h:%p jumpserver
+
+Host 128se-root
+User root
+HostName 192.168.1.128
+ProxyCommand ssh -W %h:%p yuchen@192.168.1.199
+
+## 10.60.0.129
+Host 129-jump
+User yuchen
+HostName 10.60.0.129
+ProxyCommand ssh -W %h:%p jumpserver
+
+Host se199
+User se199
+HostName chat-staging.easystack.io
+Port 2222
+
+Host se129
+User se129
+HostName chat-staging.easystack.io
+ProxyCommand ssh -W se129.se.easystack.cn:%p mirror.easystack.cn
+Port 2222
+
+Host 128-jump
+User yuchen
+HostName 192.168.1.128
+ProxyCommand ssh -W %h:%p jumpserver
+
+Host 128-jump-root
+User root
+HostName 192.168.1.128
+ProxyCommand ssh -W %h:%p jumpserver
+
+Host hygon
+User root
+HostName 172.40.0.253
+Port 22110
+ProxyCommand ssh -W %h:%p 129-mirror
+
+Host jump
+StrictHostKeyChecking no
+HostName chat-staging.easystack.io
+Port 2222
+
+Host arm-build
+User centos
+#HostName 192.168.4.23
+#HostName 172.34.0.135
+HostName 172.38.0.11
+
+Host kojid_x86_bj
+HostName 192.168.111.95
+ProxyCommand ssh -W %h:%p koji.easystack.io

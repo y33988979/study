@@ -1,0 +1,61 @@
+#!/usr/bin/stap
+# stap -D STP_OVERLOAD_THRESHOLD=2000000000LL -v osd.stp > osd.log 2>&1 &
+
+global diff
+global nvcsw
+global nivcsw
+
+probe kernel.function("do_sys_open") {
+
+	if (tid() == 1835) {
+		diff[0] = gettimeofday_ms();
+		task = task_current();
+		nvcsw[0] = task->nvcsw;
+		nivcsw[0] = task->nivcsw;
+		printf("%u: CPU%d: heartbt call do_sys_open:  state %d, nvcsw %u, nivcsw %u\n",
+				diff[0], cpu(), task->state, task->nvcsw, task->nivcsw);
+	}
+}
+
+probe kernel.function("loadavg_proc_show") {
+
+	if (tid() == 1835) {
+		diff[1] = gettimeofday_ms();
+		task = task_current();
+		nvcsw[1] = task->nvcsw;
+		nivcsw[1] = task->nivcsw;
+		printf("%u: CPU%d: heartbt call loadavg_show: state %d, nvcsw %u, nivcsw %u\n",
+				diff[0], cpu(), task->state, task->nvcsw, task->nivcsw);
+
+		time = diff[1] - diff[0];
+		if (time >= 1000)
+			printf("WARN: 002 syscall spend %ums..\n", time);
+
+		switch1 = nvcsw[1] - nvcsw[0];
+		switch2 = nivcsw[1] - nivcsw[0];
+		if (switch1 != 0 || switch2 != 0)
+			printf("WARN: 002 process occur schedule.. %d, %d\n", switch1, switch2);
+	}
+}
+
+probe kernel.function("__close_fd") {
+
+	if (tid() == 1835) {
+		diff[2] = gettimeofday_ms();
+		task = task_current();
+		nvcsw[2] = task->nvcsw;
+		nivcsw[2] = task->nivcsw;
+		printf("%u: CPU%d: heartbt call __close_fd:   state %d, nvcsw %u, nivcsw %u\n",
+				diff[0], cpu(), task->state, task->nvcsw, task->nivcsw);
+
+		time = diff[2] - diff[1];
+		if (time >= 1000)
+			printf("WARN: 003 syscall spend %ums..\n", time);
+		diff[2] = diff[1] = diff[0] = 0;
+
+		switch1 = nvcsw[2] - nvcsw[1];
+		switch2 = nivcsw[2] - nivcsw[1];
+		if (switch1 != 0 || switch2 != 0)
+			printf("WARN: 003 process occur schedule.. %d, %d\n", switch1, switch2);
+	}
+}

@@ -1,0 +1,86 @@
+#!/usr/bin/stap
+
+%{
+#include <linux/kernel_stat.h>
+#include <asm/hardirq.h>
+%}
+
+function ___smp_irq_stat_cpu:long (cpu:long)
+%{
+           u64 sum = 0;
+           int i;
+           for (i = 0; i < NR_IPI; i++)
+                   sum += __get_irq_stat(cpu, ipi_irqs[i]);
+           return sum;
+%}
+
+function irqs_count_cpu:long (cpu:long) %{
+        unsigned long sum = 0;
+        int i;
+
+        /* hardirq*/
+        for (i = 0; i < NR_IPI; i++)
+                   sum += __get_irq_stat(STAP_ARG_cpu, ipi_irqs[i]);
+        sum += kstat_cpu_irqs_sum(STAP_ARG_cpu);
+
+        /* softirq */
+        for (i = 0; i < NR_SOFTIRQS; i++)
+                sum += kstat_softirqs_cpu(i, STAP_ARG_cpu));
+        STAP_RETVALUE = (long)sum;
+%}
+
+global time
+global irq_count
+function process_trace (id:long) {
+        p = task_current();
+        pid = task_pid(p);
+
+        if (p->pid != 50804 && p->pid != 35939)
+                return ;
+
+        if (p->pid == 50804) {
+                id += 0;
+        }
+        if (p->pid == 35939) {
+                id += 3;
+        }
+
+        detla1 = 0;
+        detla2 = 0;
+        irq_detla1 = 0;
+        irq_detla2 = 0;
+        time[id] = gettimeofday_ms();
+        irq_count[id] = irqs_count_cpu(p->cpu);
+        if (id == 2 || id == 3) {
+                detla1 = time[id] - time[id-1];
+                irq_detla1 = irq_count[id] - irq_count[id-1];
+        //printf("id %d, time[2] %lu, time[1] %lu\n", id, time[2], time[1]);
+        }
+
+        if (id == 5 || id == 6) {
+                detla2 = time[id] - time[id-1];
+                irq_detla2 = irq_count[id] - irq_count[id-1];
+        }
+        if (id <=3 && detla1 > 2000) {
+                printf("\n[%s:%d]: func00%d WARNING: sched timeout.. syscall interval %dms, irqcount %lu\n", execname(), p->pid, id, detla1, irq_detla1);
+        }
+        if (id > 3 && detla2 > 2000) {
+                printf("\n[%s:%d]: func00%d WARNING: sched timeout.. syscall interval %dms, irqcount %lu\n", execname(), p->pid, id, detla2, irq_detla2);
+        }
+
+        printf("%lu: cpu%d: [%s:%d]: func00%d on cpu%d state %d, nvcsw %lu, nivcsw %lu, irqs %lu\n",
+                        time[id], cpu(), execname(), p->pid, id, p->cpu, task_state(p),
+                        p->nvcsw, p->nivcsw, irq_count[id]);
+}
+
+probe kernel.function("do_sys_open") {
+        process_trace(1);
+}
+
+probe kernel.function("loadavg_proc_show") {
+        process_trace(2);
+}
+
+probe kernel.function("__close_fd") {
+        process_trace(3);
+}

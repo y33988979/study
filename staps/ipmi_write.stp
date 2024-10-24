@@ -1,0 +1,10 @@
+#!/usr/bin/env stap
+
+
+probe vfs.write {
+	if (pathname == "/dev/watchdog")
+                printf("[%s] ipmi_write: pathname %s, ino %lu, buf %s, %d\n",
+				ctime(gettimeofday_s()), pathname, ino, user_string(buf), bytes_to_write);
+                //printf("dev %d, devname %s, pathname %s, ino %lu\n ", dev, devname, pathname, ino);
+}
+

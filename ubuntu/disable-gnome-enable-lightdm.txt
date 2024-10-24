@@ -1,0 +1,5 @@
+
+
+sudo systemctl disable gdm3
+sudo systemctl enable lightdm
+

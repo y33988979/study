@@ -1,0 +1,31 @@
+#!/usr/bin/env stap
+
+#module("ipmi_watchdog").function("ipmi_write@drivers/char/ipmi/ipmi_watchdog.c:752") $file:struct file* $buf:char const* $len:size_t $ppos:loff_t*
+probe module("ipmi_watchdog").function("ipmi_write@drivers/char/ipmi/ipmi_watchdog.c:752") {
+	printf("[yc] curr: %s:%d, ipmi_write in\n", execname(), pid() );
+}
+
+#module("ipmi_watchdog").function("ipmi_write@drivers/char/ipmi/ipmi_watchdog.c:752").return $return:ssize_t $file:struct file* $buf:char const* $len:size_t $ppos:loff_t*
+probe module("ipmi_watchdog").function("ipmi_write@drivers/char/ipmi/ipmi_watchdog.c:752").return  {
+	printf("[yc] curr: %s:%d, ipmi_write out, return %d\n", execname(), pid(), $return);
+}
+
+#module("ipmi_watchdog").function("ipmi_close@drivers/char/ipmi/ipmi_watchdog.c:877") $ino:struct inode* $filep:struct file*
+probe module("ipmi_watchdog").function("ipmi_close@drivers/char/ipmi/ipmi_watchdog.c:877") {
+	printf("[yc] curr: %s:%d, inode->i_rdev: %d, ipmi_close in\n", execname(), pid(), $ino->i_rdev);
+}
+
+#module("ipmi_watchdog").function("ipmi_close@drivers/char/ipmi/ipmi_watchdog.c:877").return $return:int $ino:struct inode* $filep:struct file*
+probe module("ipmi_watchdog").function("ipmi_close@drivers/char/ipmi/ipmi_watchdog.c:877").return {
+	printf("[yc] curr: %s:%d, inode->i_rdev: %d, ipmi_close out, return %d\n", execname(), pid(), $ino->i_rdev, $return);
+}
+
+#module("ipmi_watchdog").function("_ipmi_set_timeout@drivers/char/ipmi/ipmi_watchdog.c:424") $do_heartbeat:int $send_heartbeat_now:int
+probe module("ipmi_watchdog").function("_ipmi_set_timeout@drivers/char/ipmi/ipmi_watchdog.c:424") {
+	printf("[yc] curr: %s:%d, _ipmi_set_timeout in\n", execname(), pid());
+}
+
+#module("ipmi_watchdog").function("__ipmi_heartbeat@drivers/char/ipmi/ipmi_watchdog.c:549") $msg:struct kernel_ipmi_msg $addr:struct ipmi_system_interface_addr
+probe module("ipmi_watchdog").function("__ipmi_heartbeat@drivers/char/ipmi/ipmi_watchdog.c:549") {
+	printf("[yc] curr: %s:%d, __ipmi_heartbeat in\n", execname(), pid());
+}

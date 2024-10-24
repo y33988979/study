@@ -1,0 +1,51 @@
+[root@node-2 stap]# cat exec_drain_all_stock.stap
+
+%{
+#include <linux/kallsyms.h>
+#include <linux/memcontrol.h>
+typedef void (*drain_all_stock_func_type)(struct mem_cgroup *memcg);
+%}
+#global target_cpu = -1;
+
+global drain_all_stock_str = "drain_all_stock";
+
+
+function exec_drain_all_stock:long(func_addr:long, memcg:long)
+%{
+        drain_all_stock_func_type func;
+        struct mem_cgroup *memcg = (struct mem_cgroup *)STAP_ARG_memcg;
+
+        func = (drain_all_stock_func_type) STAP_ARG_func_addr;
+        func(memcg);
+
+        STAP_RETVALUE=STAP_ARG_func_addr;
+
+%}
+
+function find_drain_all_stock_symbol:long() %{
+        STAP_RETVALUE=kallsyms_lookup_name("drain_all_stock");
+%}
+
+probe kernel.function("accumulate_memcg_tree")
+{
+        if (kernel_string($memcg->css->cgroup->kn->name) == "user.slice") {
+                #target_cpu = cpu();
+                symbol_addr=find_drain_all_stock_symbol();
+                if (symname(symbol_addr) == drain_all_stock_str) {
+                        printf("find syms(%s) (%lx) cpu(%d)\n", symname(symbol_addr), symbol_addr, cpu());
+                        printf("exec it !!\n");
+                        exec_drain_all_stock(symbol_addr, $memcg);
+                }
+        }
+}
+#probe kernel.function("accumulate_memcg_tree").return
+#{
+#       target_cpu = -1;
+#}
+
+#probe kernel.function("drain_all_stock")
+#{
+#       //if (cpu() == target_cpu) {
+#       printf("exec %s cpu(%d)\n", ppfunc(), cpu());
+#       //}
+#}

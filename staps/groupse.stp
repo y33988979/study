@@ -1,0 +1,48 @@
+#!/usr/bin/stap
+
+#kernel.function("update_cfs_group@kernel/sched/fair.c:3017").return $se:struct sched_entity*
+#probe kernel.function("update_cfs_group@kernel/sched/fair.c:3017").return {
+#       if (task_execname() == "stress") {
+#       }
+#}
+
+probe begin {
+        printf("hello\n");
+}
+
+#kernel.function("reweight_entity@kernel/sched/fair.c:2814") $cfs_rq:struct cfs_rq* $se:struct sched_entity* $weight:long unsigned int $runnable:long unsigned int
+probe kernel.function("reweight_entity@kernel/sched/fair.c:2814") {
+        if (cpu() == 91 && execname() == "stress" && !$se->on_rq) {
+                printf("%u [%s:%d]: depth: %d reweight_entity: cfs_rq: %p, se: %p, on_rq %d, weight %lu, runnable %lu\n", 
+                                gettimeofday_ms(), execname(), pid(), $se->depth, $cfs_rq, $se, $se->on_rq, $weight, $runnable);
+                print_backtrace();
+        }
+}
+
+#kernel.statement("update_curr@kernel/sched/fair.c:849") $cfs_rq:struct cfs_rq* $curr:struct sched_entity* $delta_exec:u64
+probe kernel.statement("update_curr@kernel/sched/fair.c:849") {
+        if (cpu() == 91 && execname() == "stress") {
+                printf("%u [%s:%d]:update_curr: cfs_rq: %p, curr_se: %p d%d my_q: %p, weight: %lu, delta_exec %lu\n",
+                        gettimeofday_ms(), execname(), pid(), $cfs_rq, $curr, $curr->depth, $curr->my_q, $curr->load->weight, $delta_exec);
+        }
+}
+
+/*
+#kernel.function("dequeue_entity@kernel/sched/fair.c:3974") $cfs_rq:struct cfs_rq* $se:struct sched_entity* $flags:int
+probe kernel.function("dequeue_entity@kernel/sched/fair.c:3974") {
+        if (cpu() == 91 && execname() != "stapio") {
+                printf("%u [%s:%d]:dequeue_entity: se: %p, se->my_q: %p flags %d\n",
+                        gettimeofday_ms(), execname(), pid(), $se, $se->my_q, $flags);
+                print_backtrace();
+        }
+}
+
+#kernel.function("enqueue_entity@kernel/sched/fair.c:3868") $cfs_rq:struct cfs_rq* $se:struct sched_entity* $flags:int
+probe kernel.function("enqueue_entity@kernel/sched/fair.c:3868") {
+        if (cpu() == 91 && execname() != "stapio") {
+                printf("%u [%s:%d]:enqueue_entity: se: %p, se->my_q: %p flags %d\n",
+                        gettimeofday_ms(), execname(), pid(), $se, $se->my_q, $flags);
+                print_backtrace();
+        }
+}
+*/

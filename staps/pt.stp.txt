@@ -1,0 +1,46 @@
+#!/usr/bin/stap
+
+%{
+#include <asm/page.h>
+#include <asm/memory.h>
+#include <asm/pgtable.h>
+
+
+#include <linux/types.h>                /* For struct list_head */
+#include <linux/mm_types.h>             /* For struct page */
+
+#include <linux/pfn.h>
+%}
+
+global n=0
+
+@__private30 function dump_page_state:long(page:long)
+{
+	flags = @cast(page, "page", "kernel")->flags;
+	if ((flags & 0x8060) == 0x8060) {
+		cur_proc = task_current();
+		printf("task: %s, pid: %d, page %p, flags: 0x%lx\n", task_execname(cur_proc), task_pid(cur_proc), page, flags);
+		print_backtrace();
+		exit();
+	}
+}
+
+function vaild_page:long(hpage:long)
+{
+	return (((hpage & 0x3f) == 0) && ((hpage >= 0xffff7fe808000000 && hpage <= 0xffff7fe8080fffc0) || 
+		 		(hpage >= 0xffff7fe008200000 && hpage <= 0xffff7fe017ffffc0) || 
+				(hpage >= 0xffff7fe000000000 && hpage <= 0xffff7fe0001fffc0)) ? hpage : 0)
+}
+
+probe kernel.function("get_page").inline, kernel.function("put_page").inline,
+	kernel.function("get_page_unless_zero").inline, kernel.function("try_get_page").inline {
+	for (i = 0; i <= 30; i++) {
+		reg = sprintf("x%d", i)
+		reg_val = register(reg);
+		hpage = vaild_page(reg_val);
+		if (hpage) {
+			//printf("hpage: %p\n", hpage);
+			dump_page_state(hpage)
+		}
+	}
+}

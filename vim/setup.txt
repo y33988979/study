@@ -1,0 +1,146 @@
+
+vim config setup:
+
+https://blog.csdn.net/y33988979/article/details/86002433?spm=1001.2014.3001.5501
+
+
+----
+
+git clone http://github.com/guns/xterm-color-table.vim
+
+wget https://www.vim.org/scripts/download_script.php?src_id=2050
+
+Installation
+
+1. Copy the scratch.vim plugin to the $HOME/.vim/plugin directory. Refer to
+   the following Vim help topics for more information about Vim plugins:
+
+      :help add-plugin
+      :help add-global-plugin
+      :help runtimepath
+
+2. Restart Vim.
+
+----
+
+To enable colors on XTerm you will need to run the configure scripts with the --enable-256-color switch, in addition you may also need to set your TERM environment variable to xterm-256color.
+
+find /usr/ -name xterm-256color
+
+For bourne shells (bash, zsh, pdksh) this is done in ~/.profile:
+
+if [ -e /usr/lib/terminfo/x/xterm-256color ]; then
+        export TERM='xterm-256color'
+else
+        export TERM='xterm-color'
+fi
+Or for csh shells this is done in ~/.cshrc:
+
+setenv TERM xterm-256color
+
+
+vim config:
+
+---------------
+
+cat ~/.vimrc 
+
+```
+set nu
+ 
+syntax enable
+syntax on
+ 
+set background=dark
+ 
+cs add cscope.out
+
+nmap fc :cs find c <C-R>=expand("<cword>")<CR><CR>
+nmap fd :cs find d <C-R>=expand("<cword>")<CR><CR>
+nmap fe :cs find e <C-R>=expand("<cword>")<CR><CR>
+nmap ff :cs find f <C-R>=expand("<cword>")<CR><CR>
+nmap fg :cs find g <C-R>=expand("<cword>")<CR><CR>
+nmap fi :cs find i <C-R>=expand("<cword>")<CR><CR>
+nmap fs :cs find s <C-R>=expand("<cword>")<CR><CR>
+nmap ft :cs find t <C-R>=expand("<cword>")<CR><CR>
+nmap <c-]> :cs find s <C-R>=expand("<cword>")<CR><CR>
+ 
+"按F9即可打开tagbar界面
+nmap <silent> <F9> :TagbarToggle<CR>
+let g:tagbar_ctags_bin = 'ctags' "tagbar以来ctags插件
+let g:tagbar_left = 1 "让tagbar在页面左侧显示，默认右边
+let g:tagbar_width = 20 "设置tagbar的宽度为30列，默认40
+let g:tagbar_autofocus = 1 "这是tagbar一打开，光标即在tagbar页面内，默认在vim打开的文件内
+let g:tagbar_sort = 0 "设置标签不排序，默认排序
+ 
+"nmap <c-/> :<c-s-w><c-s><c-s-w><CR>
+"filetype plugin on
+ 
+"let g:C_UseTool_cmake    = 'yes'
+"let g:C_UseTool_doxygen  = 'yes'
+ 
+"colorscheme desert
+colorscheme default
+hi Search ctermfg=0 ctermbg=3
+hi Linenr ctermfg=0 ctermfg=3
+hi Statement ctermfg=0 ctermfg=3
+"hi ModeMsg ctermfg=Green
+hi ModeMsg ctermfg=Yellow
+```
+
+
+cat ~/.vim/syntax/c.vim
+
+```
+"highlight Functions
+syn match cFunctions display "\<[a-zA-Z_][a-zA-Z_0-9]*\>[^()]*)("me=e-2
+syn match cFunctions display "\<[a-zA-Z_][a-zA-Z_0-9]*\>\s*("me=e-1
+hi cFunctions ctermfg=175 cterm=bold guifg=goldenrod
+"========================================================
+"" Highlight All Math Operator
+"========================================================
+"" C math operators
+"syn match cMathOperator display "[-+/*/%=<>{};|.\[\],&!^:]"
+syn match cMathOperator display "[-+/*/%=]"
+"" C pointer operators
+syn match cPointerOperator display "->/|/."
+"" C logical operators - boolean results
+syn match cLogicalOperator display "[!<>]=/="
+syn match cLogicalOperator display "==/|/<=/|/>=/|/!="
+"" C bit operators
+syn match cBinaryOperator display "/(&/||/|/^/|<</|>>/)=/="
+"syn match cBinaryOperator display "/~"
+"syn match cBinaryOperatorError display "/~="
+"" More C logical operators - highlight in preference to binary
+syn match cLogicalOperator display "&&/|||"
+syn match cLogicalOperatorError display "/(&&/|||/)="
+" for yuchen
+syn match cfenhao display ";"
+syn match ckuohao display "("
+syn match ckuohao display ")"
+syn match ckuohao display ","
+syn match ckuohao display "{"
+hi cfenhao ctermbg=0 ctermfg=128
+hi ckuohao ctermbg=0 ctermfg=128
+" Math Operator
+hi cMathOperator guifg=#3EFFE2 ctermfg=6
+hi cPointerOperator guifg=#3EFFE2 ctermfg=40
+hi cLogicalOperator guifg=#3EFFE2
+hi cBinaryOperator guifg=#3EFFE2
+hi cBinaryOperatorError guifg=#3EFFE2
+hi cLogicalOperator guifg=#3EFFE2
+hi cLogicalOperatorError guifg=#3EFFE2
+ 
+hi def link cFunction Function
+hi Identifier ctermfg=0 ctermfg=3
+hi Statement ctermfg=0 ctermfg=3
+hi Comment ctermfg=0 ctermfg=12
+
+```
+
+----
+
+
+
+cat 
+
